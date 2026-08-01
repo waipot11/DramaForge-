@@ -1,0 +1,6 @@
+{
+  "name": "AI Short Drama Studio - 60 Episode Revenge Series",
+  "description": "ระบบสร้างหนังสั้นและบทละครสั้นดราม่า 6 ขั้นตอนหลัก (Gemini, Midjourney, Runway, ElevenLabs, Suno, CapCut) พร้อมโครงเรื่อง 60 ตอน และ Gemini AI Script Generator",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
