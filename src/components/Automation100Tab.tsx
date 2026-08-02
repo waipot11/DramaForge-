@@ -150,7 +150,48 @@ export const Automation100Tab: React.FC = () => {
     } else if (currentEp.status === 'step6_edit') {
       timer = setTimeout(() => {
         updateCurrentEpStatus('completed', 100, 'เสร็จสมบูรณ์ 100% ครบทั้ง 6 ขั้นตอนหลัก!', 6);
-        addLog(`[EP ${currentEp.epNumber}] 🎉 [COMPLETED] สำเร็จครบ 6 ขั้นตอนหลัก 100%! ยิง Webhook เรียบร้อย!`);
+        
+        // Trigger real Webhook POST to n8n if configured
+        if (webhookUrl && webhookUrl.trim().startsWith('http')) {
+          const scriptData = generatedScriptsMap[currentEp.epNumber] || {
+            epNumber: currentEp.epNumber,
+            title: currentEp.title,
+            logline: currentEp.logline
+          };
+          const sampleVideoUrl = `https://storage.googleapis.com/drama-studio-render/ep_${currentEp.epNumber}_final.mp4`;
+          fetch(webhookUrl.trim(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event: 'EPISODE_COMPLETED',
+              epNumber: currentEp.epNumber,
+              title: currentEp.title,
+              logline: currentEp.logline,
+              video_url: sampleVideoUrl,
+              videoUrl: sampleVideoUrl,
+              video: { url: sampleVideoUrl },
+              script: {
+                ...scriptData,
+                video_url: sampleVideoUrl,
+                videoUrl: sampleVideoUrl
+              },
+              timestamp: new Date().toISOString()
+            })
+          })
+            .then((res) => {
+              if (res.ok) {
+                addLog(`[EP ${currentEp.epNumber}] 🚀 [Webhook Sent] ยิงข้อมูลไปยัง n8n Webhook สำเร็จ (HTTP ${res.status})!`);
+              } else {
+                addLog(`[EP ${currentEp.epNumber}] ⚠️ [Webhook Response] n8n ตอบกลับ HTTP ${res.status} (ตรวจดูว่าเปิด Active ON ใน n8n แล้วหรือยัง)`);
+              }
+            })
+            .catch((err) => {
+              addLog(`[EP ${currentEp.epNumber}] ⚠️ [Webhook Trigger Error] ${err.message}`);
+            });
+        } else {
+          addLog(`[EP ${currentEp.epNumber}] 🎉 [COMPLETED] สำเร็จครบ 6 ขั้นตอนหลัก 100%! (ยังไม่ได้ระบุ Webhook URL)`);
+        }
+
         setCurrentEpIndex((prev) => prev + 1);
       }, 1500);
     }
