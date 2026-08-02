@@ -44,52 +44,120 @@ export const Automation100Tab: React.FC = () => {
       return;
     }
     setIsTestingWebhook(true);
-    addLog(`🧪 [Test Webhook] กำลังทดสอบยิงข้อมูลไปยัง: ${webhookUrl.trim()}...`);
-    const sampleVideoUrl = `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4`;
+    const targetUrl = webhookUrl.trim();
+    const isTestModeUrl = targetUrl.includes('/webhook-test/');
+    addLog(`🧪 [Test Webhook via Server Proxy] กำลังส่งข้อมูลไปยัง: ${targetUrl}...`);
+    const sampleVideoUrl = `https://www.w3schools.com/html/mov_bbb.mp4`;
     
+    const commonFields = {
+      status: 'completed',
+      Status: 'completed',
+      STATUS: 'COMPLETED',
+      state: 'completed',
+      State: 'completed',
+      action: 'upload',
+      Action: 'upload',
+      ACTION: 'UPLOAD',
+      type: 'video',
+      Type: 'video',
+      event: 'EPISODE_COMPLETED',
+      Event: 'EPISODE_COMPLETED',
+      ready: true,
+      Ready: true,
+      ready_str: 'true',
+      success: true,
+      Success: true,
+      success_str: 'true',
+      completed: true,
+      Completed: true,
+      completed_str: 'true',
+      isCompleted: true,
+      is_completed: true,
+      hasVideo: true,
+      has_video: true,
+      ok: true,
+      epNumber: 1,
+      ep_number: 1,
+      episode: 1,
+      Episode: 1,
+      ep: 1,
+      title: 'ทดสอบระบบ Drama Auto Pilot',
+      Title: 'ทดสอบระบบ Drama Auto Pilot',
+      logline: 'การทดสอบส่ง Webhook ไปยัง n8n/Make',
+      Logline: 'การทดสอบส่ง Webhook ไปยัง n8n/Make',
+      video_url: sampleVideoUrl,
+      videoUrl: sampleVideoUrl,
+      url: sampleVideoUrl,
+      Url: sampleVideoUrl,
+      link: sampleVideoUrl,
+      video_link: sampleVideoUrl,
+      media_url: sampleVideoUrl,
+      file_url: sampleVideoUrl,
+      download_url: sampleVideoUrl,
+      video: {
+        url: sampleVideoUrl,
+        video_url: sampleVideoUrl,
+        videoUrl: sampleVideoUrl,
+        status: 'completed',
+        ready: true
+      },
+      data: {
+        url: sampleVideoUrl,
+        video_url: sampleVideoUrl,
+        videoUrl: sampleVideoUrl,
+        status: 'completed',
+        ready: true,
+        action: 'upload'
+      },
+      script: {
+        epNumber: 1,
+        title: 'ทดสอบระบบ Drama Auto Pilot',
+        logline: 'การทดสอบส่ง Webhook ไปยัง n8n/Make',
+        status: 'completed',
+        video_url: sampleVideoUrl,
+        videoUrl: sampleVideoUrl,
+        url: sampleVideoUrl
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    const payload = {
+      ...commonFields,
+      body: { ...commonFields }
+    };
+
     try {
-      const res = await fetch(webhookUrl.trim(), {
+      // Use backend proxy endpoint to prevent browser CORS / SSL issues
+      const res = await fetch('/api/trigger-webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          event: 'EPISODE_COMPLETED',
-          status: 'completed',
-          state: 'completed',
-          ready: true,
-          success: true,
-          isCompleted: true,
-          completed: true,
-          action: 'upload',
-          type: 'video',
-          hasVideo: true,
-          epNumber: 1,
-          title: 'ทดสอบระบบ Drama Auto Pilot',
-          logline: 'การทดสอบส่ง Webhook ไปยัง n8n/Make',
-          video_url: sampleVideoUrl,
-          videoUrl: sampleVideoUrl,
-          video: { url: sampleVideoUrl },
-          script: {
-            epNumber: 1,
-            title: 'ทดสอบระบบ Drama Auto Pilot',
-            logline: 'การทดสอบส่ง Webhook ไปยัง n8n/Make',
-            status: 'completed',
-            video_url: sampleVideoUrl,
-            videoUrl: sampleVideoUrl
-          },
-          timestamp: new Date().toISOString()
+          webhookUrl: targetUrl,
+          payload
         })
       });
 
-      if (res.ok) {
-        addLog(`✅ [Test Webhook Success] ยิงข้อมูลไปยัง n8n สำเร็จ! (HTTP ${res.status})`);
-        alert(`✅ ส่ง Webhook สำเร็จ! (HTTP Status: ${res.status})\nโปรดดูผลลัพธ์ในหน้า n8n ได้ทันที`);
+      const result = await res.json();
+
+      if (res.ok && result.success) {
+        addLog(`✅ [Test Webhook Success] ส่งไป n8n สำเร็จ! (HTTP ${result.status})`);
+        if (isTestModeUrl) {
+          alert(`✅ ส่ง Webhook ไปยัง Test Mode สำเร็จ! (HTTP Status: ${result.status})\n\n💡 หมายเหตุ: หากใน n8n ยังไม่ขึ้นข้อมูล:\n1. ใน n8n หน้า Canvas ให้กดปุ่ม "Listen for test event" หรือ "Test step" ก่อน\n2. แล้วกลับมากดปุ่ม "ทดสอบส่ง Webhook" นี้อีกครั้ง`);
+        } else {
+          alert(`✅ ส่ง Webhook ไปยัง Production URL สำเร็จ! (HTTP Status: ${result.status})\n\n💡 หมายเหตุสำหรับ Production URL (/webhook/):\n1. สวิตช์มุมขวาบนใน n8n ต้องเปิดเป็น Active: ON\n2. ข้อมูลจะไม่แสดงบนหน้า Canvas แต่จะถูกบันทึกในแท็บ "Executions" ทางซ้ายมือของ n8n ครับ`);
+        }
       } else {
-        addLog(`⚠️ [Test Webhook Warning] n8n ตอบกลับ HTTP ${res.status}`);
-        alert(`⚠️ n8n ตอบกลับ HTTP ${res.status}\nคำแนะนำ: หากเปิดฟังใน Test Mode ให้ตรวจสอบว่า URL เป็น /webhook-test/ หรือไม่ หรือถ้าใช้งานจริงให้สวิตช์ n8n เป็น Active: ON`);
+        const errorMsg = result.data?.message || result.error || `HTTP ${result.status}`;
+        addLog(`⚠️ [Test Webhook Warning] n8n ตอบกลับ: ${errorMsg}`);
+        if (isTestModeUrl) {
+          alert(`⚠️ n8n ตอบกลับ: ${errorMsg}\n\nคำแนะนำสำหรับ Test URL (/webhook-test/):\n1. ไปที่ n8n แล้วกดปุ่ม "Listen for test event" (หรือ Test step)\n2. เมื่อ n8n ขึ้นสถานะรอข้อมูลแล้ว ให้กลับมากดปุ่มส่งในนี้อีกครั้ง`);
+        } else {
+          alert(`⚠️ n8n ตอบกลับ: ${errorMsg}\n\nคำแนะนำสำหรับ Production URL (/webhook/):\n1. ตรวจสอบว่าใน n8n เปิดสวิตช์ Active: ON แล้วหรือยัง\n2. ตรวจสอบว่า Webhook URL ถูกต้องทุกตัวอักษร`);
+        }
       }
     } catch (err: any) {
       addLog(`❌ [Test Webhook Error] ${err.message}`);
-      alert(`❌ เกิดข้อผิดพลาดในการยิง Webhook: ${err.message}`);
+      alert(`❌ เกิดข้อผิดพลาด: ${err.message}`);
     } finally {
       setIsTestingWebhook(false);
     }
@@ -217,41 +285,96 @@ export const Automation100Tab: React.FC = () => {
             logline: currentEp.logline
           };
           // Real accessible sample video URL so n8n can actually fetch the file without hanging
-          const sampleVideoUrl = `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4`;
-          fetch(webhookUrl.trim(), {
+          const sampleVideoUrl = `https://www.w3schools.com/html/mov_bbb.mp4`;
+          const epFields = {
+            status: 'completed',
+            Status: 'completed',
+            STATUS: 'COMPLETED',
+            state: 'completed',
+            State: 'completed',
+            action: 'upload',
+            Action: 'upload',
+            ACTION: 'UPLOAD',
+            type: 'video',
+            Type: 'video',
+            event: 'EPISODE_COMPLETED',
+            Event: 'EPISODE_COMPLETED',
+            ready: true,
+            Ready: true,
+            ready_str: 'true',
+            success: true,
+            Success: true,
+            success_str: 'true',
+            completed: true,
+            Completed: true,
+            completed_str: 'true',
+            isCompleted: true,
+            is_completed: true,
+            hasVideo: true,
+            has_video: true,
+            ok: true,
+            epNumber: currentEp.epNumber,
+            ep_number: currentEp.epNumber,
+            episode: currentEp.epNumber,
+            Episode: currentEp.epNumber,
+            ep: currentEp.epNumber,
+            title: currentEp.title,
+            Title: currentEp.title,
+            logline: currentEp.logline,
+            Logline: currentEp.logline,
+            video_url: sampleVideoUrl,
+            videoUrl: sampleVideoUrl,
+            url: sampleVideoUrl,
+            Url: sampleVideoUrl,
+            link: sampleVideoUrl,
+            video_link: sampleVideoUrl,
+            media_url: sampleVideoUrl,
+            file_url: sampleVideoUrl,
+            download_url: sampleVideoUrl,
+            video: {
+              url: sampleVideoUrl,
+              video_url: sampleVideoUrl,
+              videoUrl: sampleVideoUrl,
+              status: 'completed',
+              ready: true
+            },
+            data: {
+              url: sampleVideoUrl,
+              video_url: sampleVideoUrl,
+              videoUrl: sampleVideoUrl,
+              status: 'completed',
+              ready: true,
+              action: 'upload'
+            },
+            script: {
+              ...scriptData,
+              status: 'completed',
+              video_url: sampleVideoUrl,
+              videoUrl: sampleVideoUrl,
+              url: sampleVideoUrl
+            },
+            timestamp: new Date().toISOString()
+          };
+
+          const payloadData = {
+            ...epFields,
+            body: { ...epFields }
+          };
+
+          fetch('/api/trigger-webhook', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              event: 'EPISODE_COMPLETED',
-              status: 'completed',
-              state: 'completed',
-              ready: true,
-              success: true,
-              isCompleted: true,
-              completed: true,
-              action: 'upload',
-              type: 'video',
-              hasVideo: true,
-              epNumber: currentEp.epNumber,
-              title: currentEp.title,
-              logline: currentEp.logline,
-              video_url: sampleVideoUrl,
-              videoUrl: sampleVideoUrl,
-              video: { url: sampleVideoUrl },
-              script: {
-                ...scriptData,
-                status: 'completed',
-                video_url: sampleVideoUrl,
-                videoUrl: sampleVideoUrl
-              },
-              timestamp: new Date().toISOString()
+              webhookUrl: webhookUrl.trim(),
+              payload: payloadData
             })
           })
-            .then((res) => {
-              if (res.ok) {
-                addLog(`[EP ${currentEp.epNumber}] 🚀 [Webhook Sent] ยิงข้อมูลไปยัง n8n Webhook สำเร็จ (HTTP ${res.status})!`);
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success) {
+                addLog(`[EP ${currentEp.epNumber}] 🚀 [Webhook Sent] ยิงข้อมูลไปยัง n8n สำเร็จ (HTTP ${data.status})!`);
               } else {
-                addLog(`[EP ${currentEp.epNumber}] ⚠️ [Webhook Response] n8n ตอบกลับ HTTP ${res.status} (ตรวจดูว่าเปิด Active ON ใน n8n แล้วหรือยัง)`);
+                addLog(`[EP ${currentEp.epNumber}] ⚠️ [Webhook Response] n8n ตอบกลับ: ${data.error || `HTTP ${data.status}`}`);
               }
             })
             .catch((err) => {

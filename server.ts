@@ -143,6 +143,45 @@ app.post("/api/generate-prompts", async (req, res) => {
   }
 });
 
+// API Endpoint 4: Proxy Webhook Trigger to bypass browser CORS constraints
+app.post("/api/trigger-webhook", async (req, res) => {
+  try {
+    const { webhookUrl, payload } = req.body;
+    if (!webhookUrl || !webhookUrl.startsWith("http")) {
+      return res.status(400).json({ success: false, error: "Invalid or missing Webhook URL" });
+    }
+
+    console.log(`[Webhook Proxy] Triggering ${webhookUrl}`);
+
+    const response = await fetch(webhookUrl.trim(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+    });
+
+    const responseText = await response.text();
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch {
+      responseData = responseText;
+    }
+
+    return res.json({
+      success: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      data: responseData,
+    });
+  } catch (error: any) {
+    console.error("Webhook Proxy Error:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Failed to trigger webhook",
+    });
+  }
+});
+
 // Mount Vite middleware or Static Server
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
