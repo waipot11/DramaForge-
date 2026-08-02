@@ -36,6 +36,64 @@ export const Automation100Tab: React.FC = () => {
   const [autoPublishShorts, setAutoPublishShorts] = useState<boolean>(true);
   const [autoPublishReels, setAutoPublishReels] = useState<boolean>(true);
   const [webhookUrl, setWebhookUrl] = useState<string>('https://n8n.your-studio-server.com/webhook/drama-auto-pilot');
+  const [isTestingWebhook, setIsTestingWebhook] = useState<boolean>(false);
+
+  const handleTestWebhook = async () => {
+    if (!webhookUrl || !webhookUrl.trim().startsWith('http')) {
+      alert('กรุณาใส่ Webhook URL ให้ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https://)');
+      return;
+    }
+    setIsTestingWebhook(true);
+    addLog(`🧪 [Test Webhook] กำลังทดสอบยิงข้อมูลไปยัง: ${webhookUrl.trim()}...`);
+    const sampleVideoUrl = `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4`;
+    
+    try {
+      const res = await fetch(webhookUrl.trim(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'EPISODE_COMPLETED',
+          status: 'completed',
+          state: 'completed',
+          ready: true,
+          success: true,
+          isCompleted: true,
+          completed: true,
+          action: 'upload',
+          type: 'video',
+          hasVideo: true,
+          epNumber: 1,
+          title: 'ทดสอบระบบ Drama Auto Pilot',
+          logline: 'การทดสอบส่ง Webhook ไปยัง n8n/Make',
+          video_url: sampleVideoUrl,
+          videoUrl: sampleVideoUrl,
+          video: { url: sampleVideoUrl },
+          script: {
+            epNumber: 1,
+            title: 'ทดสอบระบบ Drama Auto Pilot',
+            logline: 'การทดสอบส่ง Webhook ไปยัง n8n/Make',
+            status: 'completed',
+            video_url: sampleVideoUrl,
+            videoUrl: sampleVideoUrl
+          },
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (res.ok) {
+        addLog(`✅ [Test Webhook Success] ยิงข้อมูลไปยัง n8n สำเร็จ! (HTTP ${res.status})`);
+        alert(`✅ ส่ง Webhook สำเร็จ! (HTTP Status: ${res.status})\nโปรดดูผลลัพธ์ในหน้า n8n ได้ทันที`);
+      } else {
+        addLog(`⚠️ [Test Webhook Warning] n8n ตอบกลับ HTTP ${res.status}`);
+        alert(`⚠️ n8n ตอบกลับ HTTP ${res.status}\nคำแนะนำ: หากเปิดฟังใน Test Mode ให้ตรวจสอบว่า URL เป็น /webhook-test/ หรือไม่ หรือถ้าใช้งานจริงให้สวิตช์ n8n เป็น Active: ON`);
+      }
+    } catch (err: any) {
+      addLog(`❌ [Test Webhook Error] ${err.message}`);
+      alert(`❌ เกิดข้อผิดพลาดในการยิง Webhook: ${err.message}`);
+    } finally {
+      setIsTestingWebhook(false);
+    }
+  };
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
@@ -749,9 +807,19 @@ services:
 
           {/* Webhook Endpoint Input */}
           <div className="space-y-2 pt-2 border-t border-slate-800">
-            <label className="block text-xs font-bold text-amber-300">
-              🔗 N8N / Make.com Webhook URL:
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-amber-300">
+                🔗 N8N / Make.com Webhook URL:
+              </label>
+              <button
+                onClick={handleTestWebhook}
+                disabled={isTestingWebhook || !webhookUrl}
+                type="button"
+                className="px-2.5 py-1 text-[11px] font-medium bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 text-black font-semibold rounded-lg transition shadow flex items-center gap-1"
+              >
+                {isTestingWebhook ? '⏳ กำลังส่ง...' : '🚀 ทดสอบส่ง Webhook ทันที'}
+              </button>
+            </div>
             <input
               type="text"
               value={webhookUrl}
@@ -761,7 +829,7 @@ services:
               className="w-full bg-slate-950 border border-amber-600/50 rounded-xl p-2.5 text-xs text-amber-200 font-mono focus:outline-none focus:border-amber-400 placeholder:text-slate-600 shadow-inner"
             />
             <p className="text-[10px] text-slate-400 leading-tight">
-              วาง Webhook URL ที่ได้จาก n8n / Make.com เพื่อเชื่อมต่อส่งสคริปต์อัตโนมัติ
+              วาง Webhook URL ที่ได้จาก n8n (ถ้าในโหมด Test ใน n8n ให้ใช้ URL ที่มี <code className="text-amber-300 bg-slate-900 px-1 rounded">/webhook-test/</code>) แล้วกดปุ่ม <b>ทดสอบส่ง Webhook ทันที</b> ข้างบนนี้เพื่อส่ง Payload ได้ทันที
             </p>
           </div>
 
