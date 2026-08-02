@@ -158,7 +158,8 @@ export const Automation100Tab: React.FC = () => {
             title: currentEp.title,
             logline: currentEp.logline
           };
-          const sampleVideoUrl = `https://storage.googleapis.com/drama-studio-render/ep_${currentEp.epNumber}_final.mp4`;
+          // Real accessible sample video URL so n8n can actually fetch the file without hanging
+          const sampleVideoUrl = `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4`;
           fetch(webhookUrl.trim(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
