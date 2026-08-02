@@ -165,6 +165,15 @@ export const Automation100Tab: React.FC = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               event: 'EPISODE_COMPLETED',
+              status: 'completed',
+              state: 'completed',
+              ready: true,
+              success: true,
+              isCompleted: true,
+              completed: true,
+              action: 'upload',
+              type: 'video',
+              hasVideo: true,
               epNumber: currentEp.epNumber,
               title: currentEp.title,
               logline: currentEp.logline,
@@ -173,6 +182,7 @@ export const Automation100Tab: React.FC = () => {
               video: { url: sampleVideoUrl },
               script: {
                 ...scriptData,
+                status: 'completed',
                 video_url: sampleVideoUrl,
                 videoUrl: sampleVideoUrl
               },
