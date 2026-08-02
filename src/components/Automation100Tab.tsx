@@ -35,7 +35,7 @@ export const Automation100Tab: React.FC = () => {
   const [autoPublishTikTok, setAutoPublishTikTok] = useState<boolean>(true);
   const [autoPublishShorts, setAutoPublishShorts] = useState<boolean>(true);
   const [autoPublishReels, setAutoPublishReels] = useState<boolean>(true);
-  const [webhookUrl] = useState<string>('https://n8n.your-studio-server.com/webhook/drama-auto-pilot');
+  const [webhookUrl, setWebhookUrl] = useState<string>('https://n8n.your-studio-server.com/webhook/drama-auto-pilot');
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
@@ -693,6 +693,24 @@ services:
                 </select>
               </div>
             </div>
+          </div>
+
+          {/* Webhook Endpoint Input */}
+          <div className="space-y-2 pt-2 border-t border-slate-800">
+            <label className="block text-xs font-bold text-amber-300">
+              🔗 N8N / Make.com Webhook URL:
+            </label>
+            <input
+              type="text"
+              value={webhookUrl}
+              onChange={(e) => setWebhookUrl(e.target.value)}
+              placeholder="https://n8n.your-server.com/webhook/..."
+              disabled={isRunning}
+              className="w-full bg-slate-950 border border-amber-600/50 rounded-xl p-2.5 text-xs text-amber-200 font-mono focus:outline-none focus:border-amber-400 placeholder:text-slate-600 shadow-inner"
+            />
+            <p className="text-[10px] text-slate-400 leading-tight">
+              วาง Webhook URL ที่ได้จาก n8n / Make.com เพื่อเชื่อมต่อส่งสคริปต์อัตโนมัติ
+            </p>
           </div>
 
           {/* Toggles */}
