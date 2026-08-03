@@ -47,7 +47,7 @@ export const Automation100Tab: React.FC = () => {
     const targetUrl = webhookUrl.trim();
     const isTestModeUrl = targetUrl.includes('/webhook-test/');
     addLog(`🧪 [Test Webhook via Server Proxy] กำลังส่งข้อมูลไปยัง: ${targetUrl}...`);
-    const sampleVideoUrl = `https://www.w3schools.com/html/mov_bbb.mp4`;
+    const sampleVideoUrl = `https://vjs.zencdn.net/v/oceans.mp4`;
     
     const commonFields = {
       status: 'completed',
@@ -83,8 +83,15 @@ export const Automation100Tab: React.FC = () => {
       ep: 1,
       title: 'ทดสอบระบบ Drama Auto Pilot',
       Title: 'ทดสอบระบบ Drama Auto Pilot',
+      description: 'การทดสอบส่ง Webhook ไปยัง n8n/Make - Drama Auto Pilot Episode 1',
+      Description: 'การทดสอบส่ง Webhook ไปยัง n8n/Make - Drama Auto Pilot Episode 1',
       logline: 'การทดสอบส่ง Webhook ไปยัง n8n/Make',
       Logline: 'การทดสอบส่ง Webhook ไปยัง n8n/Make',
+      category: '22',
+      categoryId: '22',
+      privacyStatus: 'unlisted',
+      privacy: 'unlisted',
+      tags: ['drama', 'shortdrama', 'series'],
       video_url: sampleVideoUrl,
       videoUrl: sampleVideoUrl,
       url: sampleVideoUrl,
@@ -285,7 +292,7 @@ export const Automation100Tab: React.FC = () => {
             logline: currentEp.logline
           };
           // Real accessible sample video URL so n8n can actually fetch the file without hanging
-          const sampleVideoUrl = `https://www.w3schools.com/html/mov_bbb.mp4`;
+          const sampleVideoUrl = `https://vjs.zencdn.net/v/oceans.mp4`;
           const epFields = {
             status: 'completed',
             Status: 'completed',
@@ -320,8 +327,15 @@ export const Automation100Tab: React.FC = () => {
             ep: currentEp.epNumber,
             title: currentEp.title,
             Title: currentEp.title,
+            description: currentEp.logline || currentEp.title,
+            Description: currentEp.logline || currentEp.title,
             logline: currentEp.logline,
             Logline: currentEp.logline,
+            category: '22',
+            categoryId: '22',
+            privacyStatus: 'unlisted',
+            privacy: 'unlisted',
+            tags: ['drama', 'shortdrama', 'series'],
             video_url: sampleVideoUrl,
             videoUrl: sampleVideoUrl,
             url: sampleVideoUrl,

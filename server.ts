@@ -32,6 +32,24 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// API Endpoint 1.5: Sample Video Proxy (bypasses CDN 403 Forbidden blocks in n8n / Make)
+app.get("/api/sample-video.mp4", async (req, res) => {
+  try {
+    const videoUrl = "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4";
+    const response = await fetch(videoUrl);
+    if (!response.ok) {
+      return res.status(500).send("Failed to fetch sample video");
+    }
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    const arrayBuffer = await response.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  } catch (err: any) {
+    return res.status(500).send(err.message);
+  }
+});
+
 // API Endpoint 2: Generate Full Episode Script via Gemini API
 app.post("/api/generate-episode-script", async (req, res) => {
   try {
