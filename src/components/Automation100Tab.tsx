@@ -112,11 +112,12 @@ export const Automation100Tab: React.FC = () => {
       tts_voice_url: ttsVoiceUrl,
       free_tts_url: ttsVoiceUrl,
       creatomate_render_json: {
-        template_id: "optional-creatomate-template-id",
+        template_id: "fb333dc6-a6e4-49ea-84d3-aa9e67dc1949",
         modifications: {
-          "Image-1": pollinationsImageUrl,
-          "Audio-1": ttsVoiceUrl,
-          "Text-Title": "ทดสอบระบบ Drama Auto Pilot (100% Free Pipeline)"
+          "Video.source": pollinationsImageUrl,
+          "Audio.source": ttsVoiceUrl,
+          "Text-1.text": "ทดสอบระบบ Drama Auto Pilot (100% Free Pipeline)",
+          "Text-2.text": firstDialogue || "Episode 1"
         }
       },
       shotstack_render_json: {
@@ -135,8 +136,13 @@ export const Automation100Tab: React.FC = () => {
         image_prompt: imagePrompt,
         dialogue_text: firstDialogue,
         creatomate_api_payload: {
-          "Image-1": pollinationsImageUrl,
-          "Audio-1": ttsVoiceUrl
+          template_id: "fb333dc6-a6e4-49ea-84d3-aa9e67dc1949",
+          modifications: {
+            "Video.source": pollinationsImageUrl,
+            "Audio.source": ttsVoiceUrl,
+            "Text-1.text": "ทดสอบระบบ Drama Auto Pilot",
+            "Text-2.text": firstDialogue || "Episode 1"
+          }
         }
       },
       video: {
