@@ -48,6 +48,11 @@ export const Automation100Tab: React.FC = () => {
     const isTestModeUrl = targetUrl.includes('/webhook-test/');
     addLog(`🧪 [Test Webhook via Server Proxy] กำลังส่งข้อมูลไปยัง: ${targetUrl}...`);
     const sampleVideoUrl = `https://vjs.zencdn.net/v/oceans.mp4`;
+    const imagePrompt = "Cinematic 9:16 vertical shot of Asian female CEO in crimson suit, dramatic revenge tension, hyperrealistic 8k";
+    const pollinationsImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=720&height=1280&nologo=true&seed=42`;
+    const firstDialogue = "ทดสอบระบบละครอัตโนมัติ 100% ฟรีไม่มีค่าใช้จ่าย";
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const ttsVoiceUrl = `${origin}/api/tts?text=${encodeURIComponent(firstDialogue)}`;
     
     const commonFields = {
       status: 'completed',
@@ -81,8 +86,8 @@ export const Automation100Tab: React.FC = () => {
       episode: 1,
       Episode: 1,
       ep: 1,
-      title: 'ทดสอบระบบ Drama Auto Pilot',
-      Title: 'ทดสอบระบบ Drama Auto Pilot',
+      title: 'ทดสอบระบบ Drama Auto Pilot (100% Free Pipeline)',
+      Title: 'ทดสอบระบบ Drama Auto Pilot (100% Free Pipeline)',
       description: 'การทดสอบส่ง Webhook ไปยัง n8n/Make - Drama Auto Pilot Episode 1',
       Description: 'การทดสอบส่ง Webhook ไปยัง n8n/Make - Drama Auto Pilot Episode 1',
       logline: 'การทดสอบส่ง Webhook ไปยัง n8n/Make',
@@ -101,6 +106,18 @@ export const Automation100Tab: React.FC = () => {
       media_url: sampleVideoUrl,
       file_url: sampleVideoUrl,
       download_url: sampleVideoUrl,
+      pollinations_image_url: pollinationsImageUrl,
+      free_ai_image_url: pollinationsImageUrl,
+      ai_image_url: pollinationsImageUrl,
+      tts_voice_url: ttsVoiceUrl,
+      free_tts_url: ttsVoiceUrl,
+      zero_cost_pipeline: {
+        ai_image_url_9_16: pollinationsImageUrl,
+        thai_tts_audio_url: ttsVoiceUrl,
+        sample_video_url: sampleVideoUrl,
+        image_prompt: imagePrompt,
+        dialogue_text: firstDialogue
+      },
       video: {
         url: sampleVideoUrl,
         video_url: sampleVideoUrl,
@@ -123,7 +140,9 @@ export const Automation100Tab: React.FC = () => {
         status: 'completed',
         video_url: sampleVideoUrl,
         videoUrl: sampleVideoUrl,
-        url: sampleVideoUrl
+        url: sampleVideoUrl,
+        ai_image_url: pollinationsImageUrl,
+        tts_voice_url: ttsVoiceUrl
       },
       timestamp: new Date().toISOString()
     };
@@ -293,6 +312,12 @@ export const Automation100Tab: React.FC = () => {
           };
           // Real accessible sample video URL so n8n can actually fetch the file without hanging
           const sampleVideoUrl = `https://vjs.zencdn.net/v/oceans.mp4`;
+          const scenePrompt = scriptData?.scenes?.[0]?.midjourneyPrompt || `Cinematic 9:16 vertical scene for ${currentEp.title}, dramatic revenge tension, hyperrealistic 8k`;
+          const pollinationsImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(scenePrompt)}?width=720&height=1280&nologo=true&seed=${currentEp.epNumber * 123}`;
+          const dialogueText = scriptData?.scenes?.[0]?.dialogue?.[0]?.text || currentEp.logline || currentEp.title;
+          const origin = typeof window !== 'undefined' ? window.location.origin : '';
+          const ttsVoiceUrl = `${origin}/api/tts?text=${encodeURIComponent(dialogueText)}`;
+
           const epFields = {
             status: 'completed',
             Status: 'completed',
@@ -345,6 +370,18 @@ export const Automation100Tab: React.FC = () => {
             media_url: sampleVideoUrl,
             file_url: sampleVideoUrl,
             download_url: sampleVideoUrl,
+            pollinations_image_url: pollinationsImageUrl,
+            free_ai_image_url: pollinationsImageUrl,
+            ai_image_url: pollinationsImageUrl,
+            tts_voice_url: ttsVoiceUrl,
+            free_tts_url: ttsVoiceUrl,
+            zero_cost_pipeline: {
+              ai_image_url_9_16: pollinationsImageUrl,
+              thai_tts_audio_url: ttsVoiceUrl,
+              sample_video_url: sampleVideoUrl,
+              image_prompt: scenePrompt,
+              dialogue_text: dialogueText
+            },
             video: {
               url: sampleVideoUrl,
               video_url: sampleVideoUrl,
@@ -889,6 +926,28 @@ services:
               <span>6. CapCut & Post</span>
             </div>
             <p className="text-[10px] text-slate-400">ตัดต่อ + ใส่ซับอัตโนมัติ</p>
+          </div>
+        </div>
+
+        {/* Zero-Cost 100% Free Pipeline Callout Banner */}
+        <div className="mt-6 bg-gradient-to-r from-emerald-950/70 via-slate-900 to-teal-950/70 border border-emerald-600/60 p-4.5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-black text-[10px] font-black tracking-wide uppercase shadow">
+                Zero-Cost Pipeline Enabled
+              </span>
+              <h3 className="text-sm font-extrabold text-emerald-300">
+                🚀 รองรับการทำละครอัตโนมัติ "ฟรี 100%" (Zero-Cost Auto Pipeline)
+              </h3>
+            </div>
+            <p className="text-xs text-slate-200 leading-relaxed">
+              ไม่จำกัดงบ! ใช้ <b>Gemini 3.6 Flash</b> (เขียนบท) + <b>Pollinations AI</b> (เจนภาพฉากแนวตั้ง 9:16 ฟรี Unlimited) + <b>Google Thai TTS</b> (เสียงพากย์ฟรี) สั่งรันผ่าน Webhook n8n สร้างวิดีโออัตโนมัติ 24 ชม.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] font-mono text-emerald-200 bg-emerald-950/90 px-3.5 py-2 rounded-xl border border-emerald-700/80 shrink-0 shadow-inner">
+            <span className="flex items-center gap-1"><Sparkles className="w-3.5 h-3.5 text-amber-400" /> Pollinations 9:16</span>
+            <span className="text-emerald-500">•</span>
+            <span className="flex items-center gap-1"><Volume2 className="w-3.5 h-3.5 text-cyan-400" /> Thai gTTS</span>
           </div>
         </div>
       </div>

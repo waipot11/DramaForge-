@@ -50,6 +50,48 @@ app.get("/api/sample-video.mp4", async (req, res) => {
   }
 });
 
+// API Endpoint 1.6: Free Thai Text-To-Speech Proxy (Google TTS - Zero Cost)
+app.get("/api/tts", async (req, res) => {
+  try {
+    const text = (req.query.text as string) || "ทดสอบระบบเสียงพากย์ละครอัตโนมัติ";
+    const cleanText = text.slice(0, 200);
+    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(cleanText)}&tl=th&client=tw-ob`;
+    const response = await fetch(ttsUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+      }
+    });
+    if (!response.ok) {
+      return res.status(500).send("TTS generation failed");
+    }
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    const arrayBuffer = await response.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  } catch (err: any) {
+    return res.status(500).send(err.message);
+  }
+});
+
+// API Endpoint 1.7: Free Pollinations.ai 9:16 AI Image Generator Proxy (Zero Cost)
+app.get("/api/ai-image", async (req, res) => {
+  try {
+    const prompt = (req.query.prompt as string) || "Cinematic 9:16 shot of Asian female CEO in crimson suit, hyperrealistic 8k";
+    const seed = req.query.seed || "42";
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=720&height=1280&nologo=true&seed=${seed}`;
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      return res.status(500).send("Image generation failed");
+    }
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    const arrayBuffer = await response.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  } catch (err: any) {
+    return res.status(500).send(err.message);
+  }
+});
+
 // API Endpoint 2: Generate Full Episode Script via Gemini API
 app.post("/api/generate-episode-script", async (req, res) => {
   try {
