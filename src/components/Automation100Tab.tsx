@@ -111,12 +111,33 @@ export const Automation100Tab: React.FC = () => {
       ai_image_url: pollinationsImageUrl,
       tts_voice_url: ttsVoiceUrl,
       free_tts_url: ttsVoiceUrl,
+      creatomate_render_json: {
+        template_id: "optional-creatomate-template-id",
+        modifications: {
+          "Image-1": pollinationsImageUrl,
+          "Audio-1": ttsVoiceUrl,
+          "Text-Title": "ทดสอบระบบ Drama Auto Pilot (100% Free Pipeline)"
+        }
+      },
+      shotstack_render_json: {
+        timeline: {
+          tracks: [
+            { clips: [{ asset: { type: "audio", src: ttsVoiceUrl }, start: 0, length: 10 }] },
+            { clips: [{ asset: { type: "image", src: pollinationsImageUrl }, start: 0, length: 10 }] }
+          ]
+        },
+        output: { format: "mp4", resolution: "1080" }
+      },
       zero_cost_pipeline: {
         ai_image_url_9_16: pollinationsImageUrl,
         thai_tts_audio_url: ttsVoiceUrl,
         sample_video_url: sampleVideoUrl,
         image_prompt: imagePrompt,
-        dialogue_text: firstDialogue
+        dialogue_text: firstDialogue,
+        creatomate_api_payload: {
+          "Image-1": pollinationsImageUrl,
+          "Audio-1": ttsVoiceUrl
+        }
       },
       video: {
         url: sampleVideoUrl,
