@@ -276,6 +276,14 @@ export const Automation100Tab: React.FC = () => {
     if (currentEp.status === 'idle') {
       updateCurrentEpStatus('step1_script', 16, 'ขั้นตอน 1/6: สกัดบทละครด้วย Gemini AI...', 1);
       addLog(`[EP ${currentEp.epNumber}] 📝 [ขั้นตอน 1/6: Gemini] คิดพล็อตเรื่องและสกัดบทละคร 5 นาที (เรื่อง: ${currentEp.title})...`);
+    } else if (currentEp.status === 'step1_script') {
+      let isMoved = false;
+      const moveToStep2 = () => {
+        if (isMoved) return;
+        isMoved = true;
+        updateCurrentEpStatus('step2_image', 33, 'ขั้นตอน 2/6: ออกแบบตัวละคร & ล็อกใบหน้า Midjourney (--cref)...', 2);
+        addLog(`[EP ${currentEp.epNumber}] 🎨 [ขั้นตอน 2/6: Midjourney] เจนภาพต้นแบบตัวละคร ล็อกใบหน้าด้วย --cref 9:16...`);
+      };
 
       // Call API to generate real script
       const epData = EPISODE_LOGLINES_60.find((e) => e.epNumber === currentEp.epNumber);
@@ -299,13 +307,16 @@ export const Automation100Tab: React.FC = () => {
           })
           .catch((err) => {
             console.error('Error in auto-pilot script generation:', err);
+          })
+          .finally(() => {
+            setTimeout(moveToStep2, 1000);
           });
+      } else {
+        setTimeout(moveToStep2, 1000);
       }
 
-      timer = setTimeout(() => {
-        updateCurrentEpStatus('step2_image', 33, 'ขั้นตอน 2/6: ออกแบบตัวละคร & ล็อกใบหน้า Midjourney (--cref)...', 2);
-        addLog(`[EP ${currentEp.epNumber}] 🎨 [ขั้นตอน 2/6: Midjourney] เจนภาพต้นแบบตัวละคร ล็อกใบหน้าด้วย --cref 9:16...`);
-      }, 1500);
+      // Safety timeout in case fetch hangs or fails
+      timer = setTimeout(moveToStep2, 8000);
     } else if (currentEp.status === 'step2_image') {
       timer = setTimeout(() => {
         updateCurrentEpStatus('step3_video', 50, 'ขั้นตอน 3/6: แปลงภาพนิ่งเป็นวิดีโอ Runway Gen-2/3 (4-10 วินาที)...', 3);
