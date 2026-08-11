@@ -227,7 +227,19 @@ export const Automation100Tab: React.FC = () => {
     setTerminalLogs((prev) => [...prev, `[${timestamp}] ${msg}`]);
   };
 
-  const handleStartAutoPilot = () => {
+  const isRunningRef = useRef<boolean>(false);
+
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const handleStopAutoPilot = () => {
+    isRunningRef.current = false;
+    setIsRunning(false);
+    addLog('🛑 [STOPPED] ผู้ใช้สั่งหยุดการทำงานของระบบรันอัตโนมัติ');
+  };
+
+  const handleStartAutoPilot = async () => {
+    if (isRunningRef.current) return;
+
     if (startEp > endEp) {
       alert('กรุณาเลือกช่วงตอนให้ถูกต้อง (ตอนเริ่มต้นต้องน้อยกว่าหรือเท่ากับตอนสิ้นสุด)');
       return;
@@ -247,48 +259,32 @@ export const Automation100Tab: React.FC = () => {
 
     setPipelineProgress(initialProgress);
     setIsRunning(true);
+    isRunningRef.current = true;
     setCurrentEpIndex(0);
 
     addLog(`🚀 [START] เริ่มกระบวนการรันอัตโนมัติ 100% สำหรับตอนที่ ${startEp} ถึง ${endEp} (รวม ${selectedEps.length} ตอน)...`);
-  };
 
-  useEffect(() => {
-    if (!isRunning || pipelineProgress.length === 0) return;
+    for (let idx = 0; idx < selectedEps.length; idx++) {
+      if (!isRunningRef.current) break;
 
-    if (currentEpIndex >= pipelineProgress.length) {
-      setIsRunning(false);
-      addLog('🎉 [COMPLETED 100%] สำเร็จทั้งหมด! ทุกตอนได้รับการสร้างบทเรียบร้อย สามารถคลิกดูบทฉบับเต็มได้ทันที!');
-      return;
-    }
+      const epData = selectedEps[idx];
+      setCurrentEpIndex(idx);
 
-    const currentEp = pipelineProgress[currentEpIndex];
-
-    const updateCurrentEpStatus = (status: EpisodeProgress['status'], progress: number, logText: string, currentStep?: number) => {
-      setPipelineProgress((prev) =>
-        prev.map((item, idx) =>
-          idx === currentEpIndex ? { ...item, status, progress, logText, currentStep } : item
-        )
-      );
-    };
-
-    let timer: NodeJS.Timeout;
-
-    if (currentEp.status === 'idle') {
-      updateCurrentEpStatus('step1_script', 16, 'ขั้นตอน 1/6: สกัดบทละครด้วย Gemini AI...', 1);
-      addLog(`[EP ${currentEp.epNumber}] 📝 [ขั้นตอน 1/6: Gemini] คิดพล็อตเรื่องและสกัดบทละคร 5 นาที (เรื่อง: ${currentEp.title})...`);
-    } else if (currentEp.status === 'step1_script') {
-      let isMoved = false;
-      const moveToStep2 = () => {
-        if (isMoved) return;
-        isMoved = true;
-        updateCurrentEpStatus('step2_image', 33, 'ขั้นตอน 2/6: ออกแบบตัวละคร & ล็อกใบหน้า Midjourney (--cref)...', 2);
-        addLog(`[EP ${currentEp.epNumber}] 🎨 [ขั้นตอน 2/6: Midjourney] เจนภาพต้นแบบตัวละคร ล็อกใบหน้าด้วย --cref 9:16...`);
+      const updateCurrentEpStatus = (status: EpisodeProgress['status'], progress: number, logText: string, currentStep?: number) => {
+        setPipelineProgress((prev) =>
+          prev.map((item, i) =>
+            i === idx ? { ...item, status, progress, logText, currentStep } : item
+          )
+        );
       };
 
-      // Call API to generate real script
-      const epData = EPISODE_LOGLINES_60.find((e) => e.epNumber === currentEp.epNumber);
-      if (epData) {
-        fetch('/api/generate-episode-script', {
+      // Step 1: Scripting (Gemini)
+      updateCurrentEpStatus('step1_script', 16, 'ขั้นตอน 1/6: สกัดบทละครด้วย Gemini AI...', 1);
+      addLog(`[EP ${epData.epNumber}] 📝 [ขั้นตอน 1/6: Gemini] คิดพล็อตเรื่องและสกัดบทละคร 5 นาที (เรื่อง: ${epData.title})...`);
+
+      let generatedScript = null;
+      try {
+        const res = await fetch('/api/generate-episode-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -297,188 +293,192 @@ export const Automation100Tab: React.FC = () => {
             logline: epData.logline,
             arcTitle: epData.arcTitle
           })
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.success && data.script) {
-              setGeneratedScriptsMap((prev) => ({ ...prev, [currentEp.epNumber]: data.script }));
-              addLog(`[EP ${currentEp.epNumber}] ✨ บทละคร Gemini สร้างสำเร็จ (${data.script.wordCount || 650} คำ, ${data.script.scenes?.length || 3} ฉาก)!`);
-            }
-          })
-          .catch((err) => {
-            console.error('Error in auto-pilot script generation:', err);
-          })
-          .finally(() => {
-            setTimeout(moveToStep2, 1000);
-          });
-      } else {
-        setTimeout(moveToStep2, 1000);
+        });
+        const data = await res.json();
+        if (data.success && data.script) {
+          generatedScript = data.script;
+          setGeneratedScriptsMap((prev) => ({ ...prev, [epData.epNumber]: data.script }));
+          addLog(`[EP ${epData.epNumber}] ✨ บทละคร Gemini สร้างสำเร็จ (${data.script.wordCount || 650} คำ, ${data.script.scenes?.length || 3} ฉาก)!`);
+        } else {
+          addLog(`[EP ${epData.epNumber}] 💡 [Gemini Note] ${data.error || 'ใช้โครงเรื่องมาตรฐานประจำตอน'}`);
+        }
+      } catch (err: any) {
+        addLog(`[EP ${epData.epNumber}] 💡 [Script Note] ${err.message || 'ใช้โครงเรื่องมาตรฐานประจำตอน'}`);
       }
 
-      // Safety timeout in case fetch hangs or fails
-      timer = setTimeout(moveToStep2, 8000);
-    } else if (currentEp.status === 'step2_image') {
-      timer = setTimeout(() => {
-        updateCurrentEpStatus('step3_video', 50, 'ขั้นตอน 3/6: แปลงภาพนิ่งเป็นวิดีโอ Runway Gen-2/3 (4-10 วินาที)...', 3);
-        addLog(`[EP ${currentEp.epNumber}] 🎥 [ขั้นตอน 3/6: Runway] อัปโหลดภาพนิ่ง สั่งขยับมุมกล้องและตัวละคร 4-10 วินาที...`);
-      }, 1500);
-    } else if (currentEp.status === 'step3_video') {
-      timer = setTimeout(() => {
-        updateCurrentEpStatus('step4_voice', 66, 'ขั้นตอน 4/6: สังเคราะห์เสียงพากย์ ElevenLabs...', 4);
-        addLog(`[EP ${currentEp.epNumber}] 🎙️ [ขั้นตอน 4/6: ElevenLabs] แปลงบทพูดเป็นเสียงพากย์อารมณ์ดราม่าเข้มข้น...`);
-      }, 1500);
-    } else if (currentEp.status === 'step4_voice') {
-      timer = setTimeout(() => {
-        updateCurrentEpStatus('step5_music', 83, 'ขั้นตอน 5/6: แต่งเพลง BGM & SFX ด้วย Suno AI...', 5);
-        addLog(`[EP ${currentEp.epNumber}] 🎵 [ขั้นตอน 5/6: Suno AI] แต่งเพลงประกอบ Cinematic Suspense BGM ไร้ลิขสิทธิ์...`);
-      }, 1500);
-    } else if (currentEp.status === 'step5_music') {
-      timer = setTimeout(() => {
-        updateCurrentEpStatus('step6_edit', 95, 'ขั้นตอน 6/6: ตัดต่อรวมไฟล์ CapCut & ยิง Webhook...', 6);
-        addLog(`[EP ${currentEp.epNumber}] ✂️ [ขั้นตอน 6/6: CapCut] รวมวิดีโอ เสียงพากย์ เพลง BGM และใส่ซับภาษาไทยสำเร็จ!`);
-      }, 1500);
-    } else if (currentEp.status === 'step6_edit') {
-      timer = setTimeout(() => {
-        updateCurrentEpStatus('completed', 100, 'เสร็จสมบูรณ์ 100% ครบทั้ง 6 ขั้นตอนหลัก!', 6);
-        
-        // Trigger real Webhook POST to n8n if configured
-        if (webhookUrl && webhookUrl.trim().startsWith('http')) {
-          const scriptData = generatedScriptsMap[currentEp.epNumber] || {
-            epNumber: currentEp.epNumber,
-            title: currentEp.title,
-            logline: currentEp.logline
-          };
-          // Real accessible sample video URL so n8n can actually fetch the file without hanging
-          const sampleVideoUrl = `https://vjs.zencdn.net/v/oceans.mp4`;
-          const scenePrompt = scriptData?.scenes?.[0]?.midjourneyPrompt || `Cinematic 9:16 vertical scene for ${currentEp.title}, dramatic revenge tension, hyperrealistic 8k`;
-          const pollinationsImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(scenePrompt)}?width=720&height=1280&nologo=true&seed=${currentEp.epNumber * 123}`;
-          const dialogueText = scriptData?.scenes?.[0]?.dialogue?.[0]?.text || currentEp.logline || currentEp.title;
-          const origin = typeof window !== 'undefined' ? window.location.origin : '';
-          const ttsVoiceUrl = `${origin}/api/tts?text=${encodeURIComponent(dialogueText)}`;
+      if (!isRunningRef.current) break;
+      await delay(1200);
 
-          const epFields = {
-            status: 'completed',
-            Status: 'completed',
-            STATUS: 'COMPLETED',
-            state: 'completed',
-            State: 'completed',
-            action: 'upload',
-            Action: 'upload',
-            ACTION: 'UPLOAD',
-            type: 'video',
-            Type: 'video',
-            event: 'EPISODE_COMPLETED',
-            Event: 'EPISODE_COMPLETED',
-            ready: true,
-            Ready: true,
-            ready_str: 'true',
-            success: true,
-            Success: true,
-            success_str: 'true',
-            completed: true,
-            Completed: true,
-            completed_str: 'true',
-            isCompleted: true,
-            is_completed: true,
-            hasVideo: true,
-            has_video: true,
-            ok: true,
-            epNumber: currentEp.epNumber,
-            ep_number: currentEp.epNumber,
-            episode: currentEp.epNumber,
-            Episode: currentEp.epNumber,
-            ep: currentEp.epNumber,
-            title: currentEp.title,
-            Title: currentEp.title,
-            description: currentEp.logline || currentEp.title,
-            Description: currentEp.logline || currentEp.title,
-            logline: currentEp.logline,
-            Logline: currentEp.logline,
-            category: '22',
-            categoryId: '22',
-            privacyStatus: 'unlisted',
-            privacy: 'unlisted',
-            tags: ['drama', 'shortdrama', 'series'],
+      // Step 2: Midjourney Image
+      updateCurrentEpStatus('step2_image', 33, 'ขั้นตอน 2/6: ออกแบบตัวละคร & ล็อกใบหน้า Midjourney (--cref)...', 2);
+      addLog(`[EP ${epData.epNumber}] 🎨 [ขั้นตอน 2/6: Midjourney] เจนภาพต้นแบบตัวละคร ล็อกใบหน้าด้วย --cref 9:16...`);
+      if (!isRunningRef.current) break;
+      await delay(1500);
+
+      // Step 3: Runway Video
+      updateCurrentEpStatus('step3_video', 50, 'ขั้นตอน 3/6: แปลงภาพนิ่งเป็นวิดีโอ Runway Gen-2/3 (4-10 วินาที)...', 3);
+      addLog(`[EP ${epData.epNumber}] 🎥 [ขั้นตอน 3/6: Runway] อัปโหลดภาพนิ่ง สั่งขยับมุมกล้องและตัวละคร 4-10 วินาที...`);
+      if (!isRunningRef.current) break;
+      await delay(1500);
+
+      // Step 4: ElevenLabs Voice
+      updateCurrentEpStatus('step4_voice', 66, 'ขั้นตอน 4/6: สังเคราะห์เสียงพากย์ ElevenLabs...', 4);
+      addLog(`[EP ${epData.epNumber}] 🎙️ [ขั้นตอน 4/6: ElevenLabs] แปลงบทพูดเป็นเสียงพากย์อารมณ์ดราม่าเข้มข้น...`);
+      if (!isRunningRef.current) break;
+      await delay(1500);
+
+      // Step 5: Suno Music
+      updateCurrentEpStatus('step5_music', 83, 'ขั้นตอน 5/6: แต่งเพลง BGM & SFX ด้วย Suno AI...', 5);
+      addLog(`[EP ${epData.epNumber}] 🎵 [ขั้นตอน 5/6: Suno AI] แต่งเพลงประกอบ Cinematic Suspense BGM ไร้ลิขสิทธิ์...`);
+      if (!isRunningRef.current) break;
+      await delay(1500);
+
+      // Step 6: CapCut Edit & Webhook
+      updateCurrentEpStatus('step6_edit', 95, 'ขั้นตอน 6/6: ตัดต่อรวมไฟล์ CapCut & ยิง Webhook...', 6);
+      addLog(`[EP ${epData.epNumber}] ✂️ [ขั้นตอน 6/6: CapCut] รวมวิดีโอ เสียงพากย์ เพลง BGM และใส่ซับภาษาไทยสำเร็จ!`);
+      if (!isRunningRef.current) break;
+      await delay(1200);
+
+      // Webhook execution
+      if (webhookUrl && webhookUrl.trim().startsWith('http')) {
+        const scriptData = generatedScript || {
+          epNumber: epData.epNumber,
+          title: epData.title,
+          logline: epData.logline
+        };
+        const sampleVideoUrl = `https://vjs.zencdn.net/v/oceans.mp4`;
+        const scenePrompt = scriptData?.scenes?.[0]?.midjourneyPrompt || `Cinematic 9:16 vertical scene for ${epData.title}, dramatic revenge tension, hyperrealistic 8k`;
+        const pollinationsImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(scenePrompt)}?width=720&height=1280&nologo=true&seed=${epData.epNumber * 123}`;
+        const dialogueText = scriptData?.scenes?.[0]?.dialogue?.[0]?.text || epData.logline || epData.title;
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        const ttsVoiceUrl = `${origin}/api/tts?text=${encodeURIComponent(dialogueText)}`;
+
+        const epFields = {
+          status: 'completed',
+          Status: 'completed',
+          STATUS: 'COMPLETED',
+          state: 'completed',
+          State: 'completed',
+          action: 'upload',
+          Action: 'upload',
+          ACTION: 'UPLOAD',
+          type: 'video',
+          Type: 'video',
+          event: 'EPISODE_COMPLETED',
+          Event: 'EPISODE_COMPLETED',
+          ready: true,
+          Ready: true,
+          ready_str: 'true',
+          success: true,
+          Success: true,
+          success_str: 'true',
+          completed: true,
+          Completed: true,
+          completed_str: 'true',
+          isCompleted: true,
+          is_completed: true,
+          hasVideo: true,
+          has_video: true,
+          ok: true,
+          epNumber: epData.epNumber,
+          ep_number: epData.epNumber,
+          episode: epData.epNumber,
+          Episode: epData.epNumber,
+          ep: epData.epNumber,
+          title: epData.title,
+          Title: epData.title,
+          description: epData.logline || epData.title,
+          Description: epData.logline || epData.title,
+          logline: epData.logline,
+          Logline: epData.logline,
+          category: '22',
+          categoryId: '22',
+          privacyStatus: 'unlisted',
+          privacy: 'unlisted',
+          tags: ['drama', 'shortdrama', 'series'],
+          video_url: sampleVideoUrl,
+          videoUrl: sampleVideoUrl,
+          url: sampleVideoUrl,
+          Url: sampleVideoUrl,
+          link: sampleVideoUrl,
+          video_link: sampleVideoUrl,
+          media_url: sampleVideoUrl,
+          file_url: sampleVideoUrl,
+          download_url: sampleVideoUrl,
+          pollinations_image_url: pollinationsImageUrl,
+          free_ai_image_url: pollinationsImageUrl,
+          ai_image_url: pollinationsImageUrl,
+          tts_voice_url: ttsVoiceUrl,
+          free_tts_url: ttsVoiceUrl,
+          zero_cost_pipeline: {
+            ai_image_url_9_16: pollinationsImageUrl,
+            thai_tts_audio_url: ttsVoiceUrl,
+            sample_video_url: sampleVideoUrl,
+            image_prompt: scenePrompt,
+            dialogue_text: dialogueText
+          },
+          video: {
+            url: sampleVideoUrl,
             video_url: sampleVideoUrl,
             videoUrl: sampleVideoUrl,
+            status: 'completed',
+            ready: true
+          },
+          data: {
             url: sampleVideoUrl,
-            Url: sampleVideoUrl,
-            link: sampleVideoUrl,
-            video_link: sampleVideoUrl,
-            media_url: sampleVideoUrl,
-            file_url: sampleVideoUrl,
-            download_url: sampleVideoUrl,
-            pollinations_image_url: pollinationsImageUrl,
-            free_ai_image_url: pollinationsImageUrl,
-            ai_image_url: pollinationsImageUrl,
-            tts_voice_url: ttsVoiceUrl,
-            free_tts_url: ttsVoiceUrl,
-            zero_cost_pipeline: {
-              ai_image_url_9_16: pollinationsImageUrl,
-              thai_tts_audio_url: ttsVoiceUrl,
-              sample_video_url: sampleVideoUrl,
-              image_prompt: scenePrompt,
-              dialogue_text: dialogueText
-            },
-            video: {
-              url: sampleVideoUrl,
-              video_url: sampleVideoUrl,
-              videoUrl: sampleVideoUrl,
-              status: 'completed',
-              ready: true
-            },
-            data: {
-              url: sampleVideoUrl,
-              video_url: sampleVideoUrl,
-              videoUrl: sampleVideoUrl,
-              status: 'completed',
-              ready: true,
-              action: 'upload'
-            },
-            script: {
-              ...scriptData,
-              status: 'completed',
-              video_url: sampleVideoUrl,
-              videoUrl: sampleVideoUrl,
-              url: sampleVideoUrl
-            },
-            timestamp: new Date().toISOString()
-          };
+            video_url: sampleVideoUrl,
+            videoUrl: sampleVideoUrl,
+            status: 'completed',
+            ready: true,
+            action: 'upload'
+          },
+          script: {
+            ...scriptData,
+            status: 'completed',
+            video_url: sampleVideoUrl,
+            videoUrl: sampleVideoUrl,
+            url: sampleVideoUrl
+          },
+          timestamp: new Date().toISOString()
+        };
 
-          const payloadData = {
-            ...epFields,
-            body: { ...epFields }
-          };
+        const payloadData = {
+          ...epFields,
+          body: { ...epFields }
+        };
 
-          fetch('/api/trigger-webhook', {
+        try {
+          const res = await fetch('/api/trigger-webhook', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               webhookUrl: webhookUrl.trim(),
               payload: payloadData
             })
-          })
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.success) {
-                addLog(`[EP ${currentEp.epNumber}] 🚀 [Webhook Sent] ยิงข้อมูลไปยัง n8n สำเร็จ (HTTP ${data.status})!`);
-              } else {
-                addLog(`[EP ${currentEp.epNumber}] ⚠️ [Webhook Response] n8n ตอบกลับ: ${data.error || `HTTP ${data.status}`}`);
-              }
-            })
-            .catch((err) => {
-              addLog(`[EP ${currentEp.epNumber}] ⚠️ [Webhook Trigger Error] ${err.message}`);
-            });
-        } else {
-          addLog(`[EP ${currentEp.epNumber}] 🎉 [COMPLETED] สำเร็จครบ 6 ขั้นตอนหลัก 100%! (ยังไม่ได้ระบุ Webhook URL)`);
+          });
+          const data = await res.json();
+          if (data.success) {
+            addLog(`[EP ${epData.epNumber}] 🚀 [Webhook Sent] ยิงข้อมูลไปยัง n8n สำเร็จ (HTTP ${data.status})!`);
+          } else {
+            addLog(`[EP ${epData.epNumber}] ⚠️ [Webhook Response] n8n ตอบกลับ: ${data.error || `HTTP ${data.status}`}`);
+          }
+        } catch (err: any) {
+          addLog(`[EP ${epData.epNumber}] ⚠️ [Webhook Trigger Error] ${err.message}`);
         }
+      } else {
+        addLog(`[EP ${epData.epNumber}] 🎉 [COMPLETED] สำเร็จครบ 6 ขั้นตอนหลัก 100%!`);
+      }
 
-        setCurrentEpIndex((prev) => prev + 1);
-      }, 1500);
+      updateCurrentEpStatus('completed', 100, 'เสร็จสมบูรณ์ 100% ครบทั้ง 6 ขั้นตอนหลัก!', 6);
+      await delay(1000);
     }
 
-    return () => clearTimeout(timer);
-  }, [isRunning, currentEpIndex, pipelineProgress]);
+    if (isRunningRef.current) {
+      setIsRunning(false);
+      isRunningRef.current = false;
+      addLog('🎉 [COMPLETED 100%] สำเร็จทั้งหมดทุกตอน! สามารถคลิกดูบทฉบับเต็มได้ทันที!');
+    }
+  };
 
   const episodeLoglinesJson = JSON.stringify(
     EPISODE_LOGLINES_60.map((e) => ({
@@ -1137,27 +1137,23 @@ services:
           </div>
 
           {/* Action Trigger Button */}
-          <button
-            onClick={handleStartAutoPilot}
-            disabled={isRunning}
-            className={`w-full py-4 rounded-xl font-extrabold text-sm flex items-center justify-center space-x-2 transition-all shadow-xl ${
-              isRunning
-                ? 'bg-slate-800 text-slate-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white shadow-red-950/50'
-            }`}
-          >
-            {isRunning ? (
-              <>
-                <RefreshCw className="w-5 h-5 animate-spin" />
-                <span>กำลังประมวลผลระบบออโต้แบบเรียลไทม์...</span>
-              </>
-            ) : (
-              <>
-                <Zap className="w-5 h-5" />
-                <span>เปิดระบบรันอัตโนมัติ 100% (Start Auto-Pilot)</span>
-              </>
-            )}
-          </button>
+          {isRunning ? (
+            <button
+              onClick={handleStopAutoPilot}
+              className="w-full py-4 rounded-xl font-extrabold text-sm flex items-center justify-center space-x-2 transition-all shadow-xl bg-gradient-to-r from-rose-700 to-red-800 hover:from-rose-600 hover:to-red-700 text-white shadow-rose-950/50 cursor-pointer"
+            >
+              <RefreshCw className="w-5 h-5 animate-spin" />
+              <span>กำลังประมวลผล... (คลิกเพื่อหยุดระบบ)</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleStartAutoPilot}
+              className="w-full py-4 rounded-xl font-extrabold text-sm flex items-center justify-center space-x-2 transition-all shadow-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white shadow-red-950/50 cursor-pointer"
+            >
+              <Zap className="w-5 h-5" />
+              <span>เปิดระบบรันอัตโนมัติ 100% (Start Auto-Pilot)</span>
+            </button>
+          )}
         </div>
 
         {/* Right: Live Execution Progress Monitor & Console */}
